@@ -1,0 +1,78 @@
+version: '3'
+services:
+  setup:
+    profiles:
+      - setup
+    build:
+      context: ./docker/setup
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    init: true
+    volumes:
+      - ./docker/setup/entrypoint.sh:/entrypoint.sh
+      - ./docker/setup/lib.sh:/lib.sh
+      - ./docker/setup/roles:/roles
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD}
+      FILEBEAT_INTERNAL_PASSWORD: ${FILEBEAT_INTERNAL_PASSWORD}
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    build:
+      context: ./docker/elasticsearch
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    environment:
+      node.name: elasticsearch
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      discovery.type: single-node
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elk
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data:Z
+      - ./docker/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro,Z
+    restart: unless-stopped
+
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:${ELASTIC_VERSION}
+    environment:
+      LS_JAVA_OPTS: -Xms256m -Xmx256m
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD}
+    volumes:
+      # - ./docker/logstash/config:/usr/share/logstash/config
+      - ./docker/logstash/pipeline:/usr/share/logstash/pipeline
+    ports:
+      - "5000:5000"
+    networks:
+      - elk
+
+  kibana:
+    build:
+        context: ./docker/kibana
+        args:
+          ELASTIC_VERSION: ${ELASTIC_VERSION}
+    environment:
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD}
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./docker/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,Z
+      - ./data/kibana:/usr/share/kibana/data
+    restart: unless-stopped
+networks:
+  elk:
+    driver: bridge
