@@ -1,0 +1,8 @@
+filebeat.inputs:
+- type: filestream
+  enabled: enable
+  paths:
+  - /var/log/elk/*.log
+
+output.logstash:
+  hosts: ["logstash:5044"]

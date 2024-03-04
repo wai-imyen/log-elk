@@ -52,7 +52,7 @@ services:
       # - ./docker/logstash/config:/usr/share/logstash/config
       - ./docker/logstash/pipeline:/usr/share/logstash/pipeline
     ports:
-      - "5000:5000"
+      - "5044:5044"
     networks:
       - elk
 
@@ -73,6 +73,16 @@ services:
       - ./docker/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,Z
       - ./data/kibana:/usr/share/kibana/data
     restart: unless-stopped
+
+  filebeat:
+    depends_on:
+      - elasticsearch
+    image: docker.elastic.co/beats/filebeat:${ELASTIC_VERSION}
+    networks:
+      - elk
+    volumes:
+      - ./docker/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./data/log/:/var/log/elk
 networks:
   elk:
     driver: bridge
